@@ -201,3 +201,43 @@ docker exec -it mysql-prod mysql -uroot -proot123 -e "USE infra_db; SELECT * FRO
 ```
 
 ![Criando backup mysqldump](screenshots/cenario2/criando-backup-mysqldump.png)
+
+---
+
+### Cenario 3
+
+criando arquivo pelo terminal fora do docker
+
+```bash
+mkdir -p docker/dev-files
+
+echo "Arquivo criado no host Ubuntu" > docker/dev-files/arquivo-host.txt
+```
+
+![criando-arquivo.png](screenshots/cenario3/criando-arquivo.png)
+
+Conectando em um containere e criando um arquivo dentro dele
+
+```bash
+docker run -it --rm \
+  --name bind-dev \
+  -v $(pwd)/docker/dev-files:/app \
+  ubuntu:22.04 \
+  bash
+
+ls -la /app
+cat /app/arquivo-host.txt
+echo "Arquivo criado dentro do container" > /app/arquivo-container.txt
+exit
+```
+
+![arquivo-container.png](screenshots/cenario3/arquivo-container.png)
+
+Validando os arquivos criados dentro do container e local
+
+```bash
+ls -la docker/dev-files
+cat docker/dev-files/arquivo-container.txt
+```
+
+![validacao-de-arquivo.png](screenshots/cenario3/validacao-de-arquivo.png)
