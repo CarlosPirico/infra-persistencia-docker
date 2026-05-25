@@ -45,7 +45,7 @@ sudo docker volume ls
 sudo docker volume inspect mysql-prod-data
 ```
 
-![Verificações iniciais](screenshots/cenario1/volume-criado.png)
+![Volume Criado](screenshots/cenario1/volume-criado.png)
 
 Criar e Validar container MySQL com o volume.
 
@@ -64,7 +64,7 @@ sudo docker ps
 sudo docker logs mysql-prod
 ```
 
-![Verificações iniciais](screenshots/cenario1/container-mysql.png)
+![Container Mysql](screenshots/cenario1/container-mysql.png)
 
 Copiar script para dentro do container:
 
@@ -84,7 +84,7 @@ Validar os dados:
 sudo docker exec -it mysql-prod mysql -uroot -proot123 -e "USE infra_db; SELECT * FROM usuarios;"
 ```
 
-![Verificações iniciais](screenshots/cenario1/dados-inseridos.png)
+![Dados Inseridos](screenshots/cenario1/dados-inseridos.png)
 
 Remover container:
 
@@ -99,7 +99,7 @@ Confimar container removido:
 sudo docker ps -a
 ```
 
-![Verificações iniciais](screenshots/cenario1/container-removido.png)
+![Container Removido](screenshots/cenario1/container-removido.png)
 
 Recriar container usando o mesmo volume.
 
@@ -119,8 +119,85 @@ Validar os dados:
 sudo docker exec -it mysql-prod mysql -uroot -proot123 -e "USE infra_db; SELECT * FROM usuarios;"
 ```
 
-![Verificações iniciais](screenshots/cenario1/dados-persistidos.png)
+![Dados Persistidos](screenshots/cenario1/dados-persistidos.png)
 
 ---
 
 ### Cenario 2
+
+Criando backup fisico e no mysqldump
+
+```bash
+docker run --rm \
+  -v mysql-prod-data:/volume \
+  -v $(pwd)/backups:/backup \
+  alpine \
+  tar czf /backup/mysql-prod-data-backup.tar.gz -C /volume .
+```
+```bash
+docker exec mysql-prod mysqldump -uroot -proot123 infra_db > backups/infra_db_dump.sql
+```
+
+![Criando backup](screenshots/cenario2/criando-backup.png)
+
+Simulando perca de dados, removendo container e volume
+
+```bash
+docker stop mysql-prod
+docker rm mysql-prod
+docker volume rm mysql-prod-data
+```
+
+![Removendo container e volume](screenshots/cenario2/removendo-volume-container.png)
+
+Criando container e volume vazio e fazendo backup fisico
+
+```bash
+docker volume create mysql-prod-data
+
+docker run --rm \
+  -v mysql-prod-data:/volume \
+  -v $(pwd)/backups:/backup \
+  alpine \
+  sh -c "tar xzf /backup/mysql-prod-data-backup.tar.gz -C /volume"
+
+docker run -d \
+  --name mysql-prod \
+  -e MYSQL_ROOT_PASSWORD=root123 \
+  -v mysql-prod-data:/var/lib/mysql \
+  -p 3306:3306 \
+  mysql:8.0
+```
+
+Validar dados
+```bash
+docker exec -it mysql-prod mysql -uroot -proot123 -e "USE infra_db; SELECT * FROM usuarios;"
+```
+
+![Criando backup fisico](screenshots/cenario2/criando-backup-fisico.png)
+
+Criando container e volume vazio e fazendo backup mysqldump
+
+```bash
+docker stop mysql-prod
+docker rm mysql-prod
+docker volume rm mysql-prod-data
+docker volume create mysql-prod-data
+
+docker run -d \
+  --name mysql-prod \
+  -e MYSQL_ROOT_PASSWORD=root123 \
+  -e MYSQL_DATABASE=infra_db \
+  -v mysql-prod-data:/var/lib/mysql \
+  -p 3306:3306 \
+  mysql:8.0
+
+docker exec -i mysql-prod mysql -uroot -proot123 infra_db < backups/infra_db_dump.sql
+```
+
+Validar dados
+```bash
+docker exec -it mysql-prod mysql -uroot -proot123 -e "USE infra_db; SELECT * FROM usuarios;"
+```
+
+![Criando backup mysqldump](screenshots/cenario2/criando-backup-mysqldump.png)
